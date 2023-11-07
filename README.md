@@ -33,6 +33,7 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 ! JSON response | Handled via cJSON (well maintained) | Handled via ArduinoJson (wrapper of cJSON) |
 | MQTT features | <ul><li>Well maintained library</li><li>QoS 0,1,2 on publish and subscribe</li><li>Ability to have multiple client</li><li>MQTT over Websocket and SSL/TLS</li><li>MQTT 5 also available</li></ul> | <ul><li>Unmaintained library</li><li>QoS 0 on publish and QoS 0, 1 on subscribe</li><li>MQTT 3 only</li><li>MQTT over Websocket and SSL/TLS not available</li><li>Work on board of different manufacturers</li></ul> |
 | GPIO pin handling | Same as Arduino, but more control on interrupt ISR and FreeRTOS queue | Easieast to start, you know... ❤️ |
+| OTA updates | Great flexibility, but difficult to start without strong motivation | Less flexibility, but easy to get the job done |
 
 
 ## Shelly options
