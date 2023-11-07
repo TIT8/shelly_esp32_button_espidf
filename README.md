@@ -35,7 +35,10 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 | GPIO pin handling | Same as Arduino, but more control on interrupt ISR and FreeRTOS queue | Easieast to start, you know... ❤️ |
 | OTA updates | Great flexibility, but difficult to start without strong motivation | Less flexibility, but easy to get the job done |
 
+<br>
 
 ## Shelly options
+
+Useful [installation video](https://www.youtube.com/watch?v=-i3d_4FLR0k) for Shelly's relays.
 
 ![Screenshot (31)](https://github.com/TIT8/shelly_button_esp32/assets/68781644/e6de6e83-4aeb-428b-a845-5be89e2eb7bd)
