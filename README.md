@@ -9,7 +9,7 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 
 <br>
 
-<p align="center"><img src="https://github.com/TIT8/shelly_button_esp32/assets/68781644/708438ba-4cfb-46ab-8b4e-c0fcf803dfa8" alt="Schematich" width='300' /></p>
+<p align="center"><img src="https://github.com/TIT8/shelly_esp32_button_espidf/assets/68781644/42b67ad6-4091-4f7f-9a1e-e24e876d9295" alt="Schematich" width='600' /></p>
 
 <br>
 
