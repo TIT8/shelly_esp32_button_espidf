@@ -11,16 +11,18 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "esp_timer.h"
-#include "protocol_examples_common.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
+#include "freertos/event_groups.h"
 
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
+#include "lwip/err.h"
+#include "lwip/sys.h"
 
 #include "mqtt_client.h"
 #include "nvs_flash.h"
@@ -29,20 +31,32 @@
 
 
 
-#define CONFIG_BROKER_URL "mqtt://192.168.1.76:1883"
+#define CONFIG_BROKER_URL "YOUR_MQTT_BROKER_IP_ADDRESS"
 #define GPIO_INPUT_PIN_SEL (1ULL << GPIO_NUM_26)
+#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_FAIL_BIT BIT1
+#define ESP_WIFI_SSID "REPLACE_WITH_YOUR_SSID"
+#define ESP_WIFI_PASS "REPLACE_WITH_YOUR_PASSWORD"
+#define ESP_MAXIMUM_RETRY 5
+#define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA2_PSK
+#define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_BOTH
+#define H2E_IDENTIFIER ""
 
 static QueueHandle_t mqtt_evt_queue = NULL;
+static EventGroupHandle_t s_wifi_event_group;
 
 static const char *TAG = "mqtt";
+static const char *TAG2 = "wifi station";
 volatile bool state = 0;
 volatile bool connection = 0;
 
+static int s_retry_num = 0;
 
 
-unsigned long millis() 
+
+unsigned long millis()
 {
-    return (unsigned long)(esp_timer_get_time()/1000ULL);
+    return (unsigned long)(esp_timer_get_time() / 1000ULL);
 }
 
 
@@ -66,10 +80,10 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        while (!connection && !xQueueSend(mqtt_evt_queue, &client, 0)) { }
-        msg_id = esp_mqtt_client_subscribe(client, "shellyplus1-a8032abc70c4/status/switch:0", 2);
+        while (!connection && !xQueueSend(mqtt_evt_queue, &client, 0)) {}
+        msg_id = esp_mqtt_client_subscribe(client, "shellyplus1-<YOUR_SHELLY_ID>/status/switch:0", 2);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-        esp_mqtt_client_publish(client, "shellyplus1-a8032abc70c4/command/switch:0", "status_update", 0, 2, 0);
+        esp_mqtt_client_publish(client, "shellyplus1-<YOUR_SHELLY_ID>/command/switch:0", "status_update", 0, 2, 0);
         break;
 
     case MQTT_EVENT_DISCONNECTED:
@@ -128,6 +142,36 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 }
 
 
+static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
+    {
+        esp_wifi_connect();
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
+    {
+        if (s_retry_num < ESP_MAXIMUM_RETRY)
+        {
+            esp_wifi_connect();
+            s_retry_num++;
+            ESP_LOGI(TAG2, "retry to connect to the AP");
+        }
+        else
+        {
+            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+        }
+        ESP_LOGI(TAG2, "connect to the AP fail");
+    }
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
+    {
+        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+        ESP_LOGI(TAG2, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        s_retry_num = 0;
+        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+    }
+}
+
+
 static void gpio_task(void *arg)
 {
     bool current = 0;
@@ -137,7 +181,7 @@ static void gpio_task(void *arg)
     unsigned long interval = 75UL;
     esp_mqtt_client_handle_t client;
 
-    while (!xQueueReceive(mqtt_evt_queue, &client, 0)) { }
+    while (!xQueueReceive(mqtt_evt_queue, &client, 0)) {}
     connection = true;
 
     for (;;)
@@ -147,13 +191,13 @@ static void gpio_task(void *arg)
         {
             previous_millis = millis();
         }
-        if ((millis() - previous_millis) > interval)    // Debouncing
-        { 
+        if ((millis() - previous_millis) > interval) // Debouncing
+        {
             if (!button_current)
             {
                 if (!current)
                 {
-                    esp_mqtt_client_publish(client, "shellyplus1-a8032abc70c4/command/switch:0", state ? "off" : "on", 0, 2, 0);
+                    esp_mqtt_client_publish(client, "shellyplus1-<YOUR_SHELLY_ID>/command/switch:0", state ? "off" : "on", 0, 2, 0);
                 }
                 current = 1;
             }
@@ -180,6 +224,64 @@ static void mqtt_app_start(void)
 }
 
 
+void wifi_init_sta(void)
+{
+    s_wifi_event_group = xEventGroupCreate();
+
+    esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    esp_event_handler_instance_t instance_any_id;
+    esp_event_handler_instance_t instance_got_ip;
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
+                                                        ESP_EVENT_ANY_ID,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_any_id));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+                                                        IP_EVENT_STA_GOT_IP,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_got_ip));
+
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = ESP_WIFI_SSID,
+            .password = ESP_WIFI_PASS,
+            .threshold.authmode = ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD,
+            .sae_pwe_h2e = ESP_WIFI_SAE_MODE,
+            .sae_h2e_identifier = H2E_IDENTIFIER,
+        },
+    };
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    ESP_LOGI(TAG2, "wifi_init_sta finished.");
+
+    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+                                           WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+                                           pdFALSE,
+                                           pdFALSE,
+                                           portMAX_DELAY);
+
+    if (bits & WIFI_CONNECTED_BIT)
+    {
+        ESP_LOGI(TAG2, "connected to ap SSID:%s password:%s", ESP_WIFI_SSID, ESP_WIFI_PASS);
+    }
+    else if (bits & WIFI_FAIL_BIT)
+    {
+        ESP_LOGI(TAG2, "Failed to connect to SSID:%s, password:%s", ESP_WIFI_SSID, ESP_WIFI_PASS);
+    }
+    else
+    {
+        ESP_LOGE(TAG2, "UNEXPECTED EVENT");
+    }
+}
+
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "[APP] Startup..");
@@ -194,10 +296,18 @@ void app_main(void)
     esp_log_level_set("transport", ESP_LOG_VERBOSE);
     esp_log_level_set("outbox", ESP_LOG_VERBOSE);
 
-    ESP_ERROR_CHECK(nvs_flash_init());
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    ESP_ERROR_CHECK(example_connect());
+
+    ESP_LOGI(TAG2, "ESP_WIFI_MODE_STA");
+    wifi_init_sta();
 
     mqtt_app_start();
 
