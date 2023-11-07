@@ -28,6 +28,7 @@
 #include "cJSON.h"
 
 
+
 #define CONFIG_BROKER_URL "mqtt://192.168.1.76:1883"
 #define GPIO_INPUT_PIN_SEL (1ULL << GPIO_NUM_26)
 
@@ -36,6 +37,7 @@ static QueueHandle_t mqtt_evt_queue = NULL;
 static const char *TAG = "mqtt";
 volatile bool state = 0;
 volatile bool connection = 0;
+
 
 
 unsigned long millis() 
@@ -51,6 +53,7 @@ static void log_error_if_nonzero(const char *message, int error_code)
         ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
     }
 }
+
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
@@ -124,6 +127,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     }
 }
 
+
 static void gpio_task(void *arg)
 {
     bool current = 0;
@@ -138,16 +142,13 @@ static void gpio_task(void *arg)
 
     for (;;)
     {
-
         button_current = gpio_get_level(GPIO_NUM_26);
         if (button_current != button_last)
         {
             previous_millis = millis();
         }
-
         if ((millis() - previous_millis) > interval)    // Debouncing
         { 
-
             if (!button_current)
             {
                 if (!current)
@@ -161,10 +162,10 @@ static void gpio_task(void *arg)
                 current = 0;
             }
         }
-
         button_last = button_current;
     }
 }
+
 
 static void mqtt_app_start(void)
 {
@@ -177,6 +178,7 @@ static void mqtt_app_start(void)
     mqtt_evt_queue = xQueueCreate(10, sizeof(client));
     esp_mqtt_client_start(client);
 }
+
 
 void app_main(void)
 {
