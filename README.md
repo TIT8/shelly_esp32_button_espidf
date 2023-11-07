@@ -31,12 +31,13 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 | Dependencies | All included in the official SDK | <ul><li>ArduinoJson</li><li>Pubsubclient</li></ul> |
 | Clear advantage | Extreme control on execution contexts | Portability of code to other Arduino compatible board |
 ! JSON response | Handled via cJSON (well maintained) | Handled via ArduinoJson (wrapper of cJSON) |
-| MQTT features | <ul><li>Well maintained library</li><li>QoS 0,1,2 on publish and subscribe</li><li>Ability to have multiple client</li><li>MQTT over Websocket and SSL/TLS</li><li>MQTT 5 also available</li></ul> | <ul><li>Unmaintained library</li><li>QoS 0 on publish and QoS 0, 1 on subscribe</li><li>MQTT 3 only</li><li>MQTT over Websocket and SSL/TLS not available</li><li>Work on board of different manufacturers</li></ul> |
+| MQTT features | <ul><li>Well maintained library</li><li>QoS 0,1,2 on publish and subscribe</li><li>Ability to have multiple client</li><li>MQTT over Websocket and SSL/TLS</li><li>MQTT 5 also available</li></ul> | <ul><li>Unmaintained library [^1]</li><li>QoS 0 on publish and QoS 0, 1 on subscribe</li><li>MQTT 3 only</li><li>MQTT over Websocket and SSL/TLS not available</li><li>Work on board of different manufacturers</li></ul> |
 | GPIO pin handling | Same as Arduino, but more control on interrupt ISR and FreeRTOS queue | Easieast to start, you know... ❤️ |
 | OTA updates | Great flexibility, but difficult to start without strong motivation | Less flexibility, but easy to get the job done |
-| Memory footprint | <ul><li>RAM 9%</li><li>Flash 83% [^1]</li></ul> | <ul><li>RAM 14%</li><li>Flash 63%</li></ul> |
+| Memory footprint | <ul><li>RAM 9%</li><li>Flash 83% [^2]</li></ul> | <ul><li>RAM 14%</li><li>Flash 63%</li></ul> |
 
-[^1]: I know that can be less than Arduino, but I'm still a beginner with the official IDF. Forgive me.
+[^1]: Still relevant in performance and reliability for general use cases.
+[^2]: I know that can be less than Arduino, but I'm still a beginner with the official IDF. Forgive me.
 
 ## Shelly options
 
