@@ -20,8 +20,11 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 
 ## Prerequisities
 
-- Look at the [PlatformIO documentation](https://docs.platformio.org/en/stable/tutorials/espressif32/espidf_debugging_unit_testing_analysis.html) to start.
-- If you already have the ESP-IDF installed (via Platformio or not), all the dependencies come with it, so you won't import anything. Simply build and upload 💪.
+1. Look at the [PlatformIO documentation](https://docs.platformio.org/en/stable/tutorials/espressif32/espidf_debugging_unit_testing_analysis.html) to start.
+2. If you already have the ESP-IDF installed (via Platformio or not), all the dependencies come with it, so you won't import anything. Simply build and upload 💪.
+3. An ESP32 board (with IDF, also other versions like S2,S3,C3).
+4. Remember to add the [CP2102 driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads) to connect old ESP32 development board (with CP2102 as USB-UART bridge).
+5. [How to](https://github.com/sukesh-ak/setup-mosquitto-with-docker) setup a local broker in a Docker container.
 
 
 ## ESP-IDF vs Arduino
