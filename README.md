@@ -36,7 +36,7 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 | OTA updates | Great flexibility, but difficult to start without strong motivation | Less flexibility, but easy to get the job done |
 | Memory footprint | <ul><li>RAM 9%</li><li>Flash 83% [^1]</li></ul> | <ul><li>RAM 14%</li><li>Flash 63%</li></ul> |
 
-[^1]: I know that can be less than Arduino, but I'm still a beginner on the official IDF. Forgive me.
+[^1]: I know that can be less than Arduino, but I'm still a beginner with the official IDF. Forgive me.
 
 ## Shelly options
 
