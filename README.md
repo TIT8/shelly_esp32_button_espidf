@@ -31,7 +31,7 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 
 | Features | ESP-IDF | Arduino |
 | :-------- | ---- | ----- |
-| Dependencies | All included in the official SDK | <ul><li>ArduinoJson</li><li>Pubsubclient</li></ul> |
+| Dependencies | All included in the official SDK | <ul><li>ArduinoJson</li><li>Pubsubclient</li><li>ArduinoOta</li></ul> |
 | Clear advantage | Extreme control on execution contexts | Portability of code to other Arduino compatible board |
 ! JSON response | Handled via cJSON (well maintained) | Handled via ArduinoJson (wrapper of cJSON) |
 | MQTT features | <ul><li>Well maintained library</li><li>QoS 0,1,2 on publish and subscribe</li><li>Ability to have multiple client</li><li>MQTT over Websocket and SSL/TLS</li><li>MQTT 5 also available</li></ul> | <ul><li>Unmaintained library [^1]</li><li>QoS 0 on publish and QoS 0, 1 on subscribe</li><li>MQTT 3 only</li><li>MQTT over Websocket and SSL/TLS not available</li><li>Work on board of different manufacturers</li></ul> |
