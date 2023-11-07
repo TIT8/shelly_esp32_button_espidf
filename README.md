@@ -21,10 +21,18 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 ## Prerequisities
 
 - Look at the [PlatformIO documentation](https://docs.platformio.org/en/stable/tutorials/espressif32/espidf_debugging_unit_testing_analysis.html) to start.
-- If you already have the ESP-IDF installed (via Platformio or not), all the dependencies come with it, so you won't import nothing. Simply build and upload 💪.
+- If you already have the ESP-IDF installed (via Platformio or not), all the dependencies come with it, so you won't import anything. Simply build and upload 💪.
 
 
 ## ESP-IDF vs Arduino
+
+| Features | ESP-IDF | Arduino |
+| :-------- | ---- | ----- |
+| Dependencies | All included in the official SDK | <ul><li>ArduinoJson</li><li>Pubsubclient</li></ul> |
+| Clear advantage | Extreme control on execution contexts | Portability of code to other Arduino compatible board |
+! JSON response | Handled via cJSON (well maintained) | Handled via ArduinoJson (wrapper of cJSON) |
+| MQTT features | <ul><li>Well maintained library</li><li>QoS 0,1,2 on publish and subscribe</li><li>Ability to have multiple client</li><li>MQTT over Websocket and SSL/TLS</li><li>MQTT 5 also available</li></ul> | <ul><li>Unmaintained library</li><li>QoS 0 on publish and QoS 0, 1 on subscribe</li><li>MQTT 3 only</li><li>MQTT over Websocket and SSL/TLS not available</li><li>Work on board of different manufacturers</li></ul> |
+| GPIO pin handling | Same as Arduino, but more control on interrupt ISR and FreeRTOS queue | Easieast to start, you know... ❤️ |
 
 
 ## Shelly options
