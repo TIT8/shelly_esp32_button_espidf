@@ -38,6 +38,12 @@ volatile bool state = 0;
 volatile bool connection = 0;
 
 
+unsigned long millis() 
+{
+    return (unsigned long)(esp_timer_get_time()/1000ULL);
+}
+
+
 static void log_error_if_nonzero(const char *message, int error_code)
 {
     if (error_code != 0)
@@ -57,7 +63,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        while (!connection && !xQueueSend(mqtt_evt_queue, &client, 0)) {}
+        while (!connection && !xQueueSend(mqtt_evt_queue, &client, 0)) { }
         msg_id = esp_mqtt_client_subscribe(client, "shellyplus1-a8032abc70c4/status/switch:0", 2);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
         esp_mqtt_client_publish(client, "shellyplus1-a8032abc70c4/command/switch:0", "status_update", 0, 2, 0);
@@ -121,30 +127,42 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 static void gpio_task(void *arg)
 {
     bool current = 0;
+    bool button_current = 0;
+    bool button_last = 0;
+    unsigned long previous_millis = 0UL;
+    unsigned long interval = 75UL;
     esp_mqtt_client_handle_t client;
-    while (!xQueueReceive(mqtt_evt_queue, &client, 0)) {}
+
+    while (!xQueueReceive(mqtt_evt_queue, &client, 0)) { }
     connection = true;
+
     for (;;)
     {
-        if (!gpio_get_level(GPIO_NUM_26))
+
+        button_current = gpio_get_level(GPIO_NUM_26);
+        if (button_current != button_last)
         {
-            if (!current)
+            previous_millis = millis();
+        }
+
+        if ((millis() - previous_millis) > interval)    // Debouncing
+        { 
+
+            if (!button_current)
             {
-                esp_mqtt_client_publish(client, "shellyplus1-a8032abc70c4/command/switch:0", state ? "off" : "on", 0, 2, 0);
+                if (!current)
+                {
+                    esp_mqtt_client_publish(client, "shellyplus1-a8032abc70c4/command/switch:0", state ? "off" : "on", 0, 2, 0);
+                }
+                current = 1;
             }
-            current = 1;
+            else
+            {
+                current = 0;
+            }
         }
-        else
-        {
-            current = 0;
-        }
-        /*
-            Debounce with the FreeRTOS delay, as there is no difference with millis(),
-            in both cases this task will execute in a time slice set by the scheduler.
-            You can also use interrupts, but you will need hardware debouncing (RC filter),
-            without using the pullup mode on the input (capacitors do not work at ground).
-        */
-        vTaskDelay(150 / portTICK_PERIOD_MS);
+
+        button_last = button_current;
     }
 }
 
@@ -189,5 +207,5 @@ void app_main(void)
     io_conf.pull_down_en = 0;
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 
-    xTaskCreate(gpio_task, "gpio_task", 2048, NULL, 10, NULL);
+    xTaskCreate(gpio_task, "gpio_task", 4096, NULL, 10, NULL);
 }
