@@ -1,0 +1,10 @@
+dependencies:
+  protocol_examples_common:
+    component_hash: null
+    source:
+      path: C:\Users\loren\.platformio\packages\framework-espidf\examples\common_components\protocol_examples_common
+      type: local
+    version: '*'
+manifest_hash: cceb2bce12ff460a5105e605c4017b97b37e8240c50a65a7028eeb56702eaa51
+target: esp32
+version: 1.0.0
