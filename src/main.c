@@ -138,6 +138,12 @@ static void gpio_task(void *arg)
         {
             current = 0;
         }
+        /*
+            Debounce with the FreeRTOS delay, as there is no difference with millis(),
+            in both cases this task will execute in a time slice set by the scheduler.
+            You can also use interrupts, but you will need hardware debouncing (RC filter),
+            without using the pullup mode on the input (capacitors do not work at ground).
+        */
         vTaskDelay(150 / portTICK_PERIOD_MS);
     }
 }
