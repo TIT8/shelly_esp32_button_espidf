@@ -47,10 +47,9 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static const char *TAG = "mqtt";
 static const char *TAG2 = "wifi station";
+static int s_retry_num = 0;
 volatile bool state = 0;
 volatile bool connection = 0;
-
-static int s_retry_num = 0;
 
 
 
@@ -181,7 +180,7 @@ static void gpio_task(void *arg)
     unsigned long interval = 75UL;
     esp_mqtt_client_handle_t client;
 
-    while (!xQueueReceive(mqtt_evt_queue, &client, 0)) {}
+    while (!xQueueReceive(mqtt_evt_queue, &client, portMAX_DELAY)) {} // Let it be reduntant here, if we don't have the client, we can't go on!
     connection = true;
 
     for (;;)
@@ -219,7 +218,7 @@ static void mqtt_app_start(void)
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
 
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
-    mqtt_evt_queue = xQueueCreate(10, sizeof(client));
+    mqtt_evt_queue = xQueueCreate(1, sizeof(client));
     esp_mqtt_client_start(client);
 }
 
