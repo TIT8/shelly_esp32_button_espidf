@@ -38,9 +38,11 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 | GPIO pin handling | Same as Arduino, but more control on interrupt ISR and FreeRTOS queue | Easieast to start, you know... ❤️ |
 | OTA updates | Great flexibility, but difficult to start without strong motivation | Less flexibility, but easy to get the job done |
 | Memory footprint | <ul><li>RAM 27.1 KB</li><li>Flash 701.4 KB [^2]</li></ul> | <ul><li>RAM 34.6 KB</li><li>Flash 637.8 KB</li></ul> |
+| RTOS | Yes, you see clearly how it works [^3] | Yes, but hidden |
 
 [^1]: Still relevant in performance and reliability for general use cases.
 [^2]: I know that can be less than Arduino, but I'm still a beginner with the official IDF. Forgive me.
+[^3]: **This [Youtube channel](https://www.youtube.com/watch?v=EegFVATVvJU) can be your starting point in RTOS (you'll never come back then).**
 
 ## Shelly options
 
