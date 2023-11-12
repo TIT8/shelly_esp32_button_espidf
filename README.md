@@ -47,6 +47,7 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 
 ## Shelly options
 
-Useful [installation video](https://www.youtube.com/watch?v=-i3d_4FLR0k) for Shelly's relays.
+- Useful [installation video](https://www.youtube.com/watch?v=-i3d_4FLR0k) for Shelly's relays.
+- How Shelly handle MQTT connections in the [official doc](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Mqtt#mqtt-control).
 
 ![Screenshot (31)](https://github.com/TIT8/shelly_button_esp32/assets/68781644/e6de6e83-4aeb-428b-a845-5be89e2eb7bd)
