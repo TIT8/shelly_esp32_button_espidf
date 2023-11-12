@@ -180,7 +180,7 @@ static void gpio_task(void *arg)
     unsigned long interval = 75UL;
     esp_mqtt_client_handle_t client;
 
-    while (!xQueueReceive(mqtt_evt_queue, &client, portMAX_DELAY)) {} // Let it be reduntant here, if we don't have the client, we can't go on!
+    while (!xQueueReceive(mqtt_evt_queue, &client, portMAX_DELAY)) {} // Make sure you wait the client
     connection = true;
 
     for (;;)
