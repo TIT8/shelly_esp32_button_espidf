@@ -113,8 +113,8 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             cJSON *output = cJSON_GetObjectItem(json, "output");
             if (output != NULL && cJSON_IsBool(output))
             {
-                printf("output=%d\r\n", output->valueint);
                 state = output->valueint;
+                printf("output=%d\r\n", state);   
             }
         }
         else
@@ -197,7 +197,8 @@ static void gpio_task(void *arg)
             {
                 if (!current)
                 {
-                    esp_mqtt_client_publish(client, "shellyplus1-<YOUR_SHELLY_ID>/command/switch:0", state ? "off" : "on", 0, 2, 0);
+                    state = !state;
+                    esp_mqtt_client_publish(client, "shellyplus1-<YOUR_SHELLY_ID>/command/switch:0", state ? "on" : "off", 0, 2, 0);
                 }
                 current = 1;
             }
