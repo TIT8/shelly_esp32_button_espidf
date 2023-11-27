@@ -51,3 +51,9 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 - How Shelly handle MQTT connections in the [official doc](https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Mqtt#mqtt-control).
 
 ![Screenshot (31)](https://github.com/TIT8/shelly_button_esp32/assets/68781644/e6de6e83-4aeb-428b-a845-5be89e2eb7bd)
+
+## Adventure with speech recognition
+
+You can make it with _I2S MIC + ESP-EYE_ on Edge Impulse for example. I tried with different boards, take a look [here](https://github.com/TIT8/shelly_button_esp32_arduino/tree/master/speech_recognition).
+
+<br>
