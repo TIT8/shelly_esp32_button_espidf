@@ -37,7 +37,7 @@
 #define WIFI_FAIL_BIT BIT1
 #define ESP_WIFI_SSID "REPLACE_WITH_YOUR_SSID"
 #define ESP_WIFI_PASS "REPLACE_WITH_YOUR_PASSWORD"
-#define ESP_MAXIMUM_RETRY 5
+#define ESP_MAXIMUM_RETRY 30
 #define ESP_WIFI_SCAN_AUTH_MODE_THRESHOLD WIFI_AUTH_WPA2_PSK
 #define ESP_WIFI_SAE_MODE WPA3_SAE_PWE_BOTH
 #define H2E_IDENTIFIER ""
@@ -50,6 +50,7 @@ static const char *TAG2 = "wifi station";
 static int s_retry_num = 0;
 volatile bool state = 0;
 volatile bool connection = 0;
+volatile bool disconnected = 0;
 
 
 
@@ -78,9 +79,16 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
     switch ((esp_mqtt_event_id_t)event_id)
     {
+
+    case MQTT_EVENT_BEFORE_CONNECT:
+        ESP_LOGI(TAG, "MQTT_CLIENT_INITIALIZED");
+        while (!connection && !xQueueSend(mqtt_evt_queue, &client, 0)) {}
+        ESP_LOGI(TAG, "MQTT_CLIENT_READY_TO_PUBLISH");
+        break;
+
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        while (!connection && !xQueueSend(mqtt_evt_queue, &client, 0)) {}
+        disconnected = false;
         msg_id = esp_mqtt_client_subscribe(client, "shellyplus1-<YOUR_SHELLY_ID>/status/switch:0", 2);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
         esp_mqtt_client_publish(client, "shellyplus1-<YOUR_SHELLY_ID>/command/switch:0", "status_update", 0, 2, 0);
@@ -88,6 +96,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+        disconnected = true;
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
@@ -99,6 +108,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
         break;
 
     case MQTT_EVENT_PUBLISHED:
+        // Only for QoS 1 and 2
         ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         break;
 
@@ -114,7 +124,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             if (output != NULL && cJSON_IsBool(output))
             {
                 state = output->valueint;
-                printf("output=%d\r\n", state);   
+                printf("output=%d\r\n", state);
             }
         }
         else
@@ -150,6 +160,9 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
+        // Remember to panic and reboot (in the config) if the watchdog was triggered
+        // This usally happen when the wifi task cannot connect, so log and reboot
+        // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/wdts.html#id1
         if (s_retry_num < ESP_MAXIMUM_RETRY)
         {
             esp_wifi_connect();
@@ -178,7 +191,8 @@ static void gpio_task(void *arg)
     bool button_current = 0;
     bool button_last = 0;
     unsigned long previous_millis = 0UL;
-    unsigned long interval = 75UL;
+    unsigned long interval = 70UL;
+    int msg_id;
     esp_mqtt_client_handle_t client;
 
     while (!xQueueReceive(mqtt_evt_queue, &client, portMAX_DELAY)) {}
@@ -197,8 +211,32 @@ static void gpio_task(void *arg)
             {
                 if (!current)
                 {
-                    state = !state;
-                    esp_mqtt_client_publish(client, "shellyplus1-<YOUR_SHELLY_ID>/command/switch:0", state ? "on" : "off", 0, 2, 0);
+                    msg_id = esp_mqtt_client_publish(client, "shellyplus1-<YOUR_SHELLY_ID>/command/switch:0", state ? "off" : "on", 0, 2, 0);
+                    // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/protocols/mqtt.html#_CPPv423esp_mqtt_client_publish24esp_mqtt_client_handle_tPKcPKciii
+                    if (msg_id == -1)
+                    {
+                        ESP_LOGI(TAG, "MQTT_PUBLISH_FAILED");
+                        if (disconnected)
+                        {
+                            // Force reconnection
+                            esp_err_t err = esp_mqtt_client_reconnect(client);
+                            if (err != ESP_OK)
+                            {
+                                ESP_LOGE(TAG, "MQTT reconnection failed with error: %d", err);
+                            }
+                            else
+                            {
+                                ESP_LOGI(TAG, "MQTT_RECONNECTION_SUCCESS");
+                                disconnected = false;
+                            }
+                        }
+                    }
+                    else if (msg_id != -1 && msg_id != -2)
+                    {
+                        // Save the state for redundancy
+                        state = !state;
+                        printf("state=%d\n", state);
+                    }
                 }
                 current = 1;
             }
