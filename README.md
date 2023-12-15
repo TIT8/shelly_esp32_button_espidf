@@ -14,9 +14,9 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 <br>
 
 - For testing I use the [Hive MQ public broker](https://www.hivemq.com/mqtt/public-mqtt-broker/).
-
 - For production I use [Mosquitto](https://mosquitto.org/) from a Docker container inside my local environment (see the [Docker compose file](https://github.com/TIT8/shelly_button_esp32/blob/master/compose.yaml)).
 
+❗ The code and the hardware (watchdog timer) should already handle reconnections if something goes wrong.
 
 ## Prerequisities
 
