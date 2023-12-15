@@ -39,7 +39,7 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 | OTA updates | Great flexibility, but difficult to start without strong motivation | Less flexibility, but easy to get the job done |
 | Memory footprint | <ul><li>RAM 27.1 KB</li><li>Flash 701.4 KB [^2]</li></ul> | <ul><li>RAM 34.6 KB</li><li>Flash 637.8 KB</li></ul> |
 | RTOS | Yes, you see clearly how it works [^3] | Yes, but hidden |
-| Hardware configurations | Easy via the [menu config](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/kconfig.html) (like STMCubeMX, less graphic though) | You have to explicitly write the code to configure the peripherals/timers you need |
+| Hardware configurations | Easy via the [menu config](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/kconfig.html) (like _STM32CubeMX_, less graphic though) | You have to explicitly write the code to configure the peripherals/timers you need |
 | Feelings | Faster 🚀 | Just works ⭐ |
 
 [^1]: Still relevant in performance and reliability for general use cases.
