@@ -89,9 +89,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
         disconnected = false;
-        msg_id = esp_mqtt_client_subscribe(client, "shellyplus1-<YOUR_SHELLY_ID>/status/switch:0", 2);
+        msg_id = esp_mqtt_client_subscribe(client, "<YOUR_SHELLY_ID>/status/switch:0", 2);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-        esp_mqtt_client_publish(client, "shellyplus1-<YOUR_SHELLY_ID>/command/switch:0", "status_update", 0, 2, 0);
+        esp_mqtt_client_publish(client, "<YOUR_SHELLY_ID>/command/switch:0", "status_update", 0, 2, 0);
         break;
 
     case MQTT_EVENT_DISCONNECTED:
@@ -161,7 +161,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
         // Remember to panic and reboot (in the config) if the watchdog was triggered
-        // This usally happen when the wifi task cannot connect, so log and reboot
+        // This usally happen when the wifi connection is lost, so log and reboot
         // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/wdts.html#id1
         if (s_retry_num < ESP_MAXIMUM_RETRY)
         {
@@ -211,7 +211,7 @@ static void gpio_task(void *arg)
             {
                 if (!current)
                 {
-                    msg_id = esp_mqtt_client_publish(client, "shellyplus1-<YOUR_SHELLY_ID>/command/switch:0", state ? "off" : "on", 0, 2, 0);
+                    msg_id = esp_mqtt_client_publish(client, "<YOUR_SHELLY_ID>/command/switch:0", state ? "off" : "on", 0, 2, 0);
                     // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/protocols/mqtt.html#_CPPv423esp_mqtt_client_publish24esp_mqtt_client_handle_tPKcPKciii
                     if (msg_id == -1)
                     {
@@ -235,7 +235,6 @@ static void gpio_task(void *arg)
                     {
                         // Save the state for redundancy
                         state = !state;
-                        printf("state=%d\n", state);
                     }
                 }
                 current = 1;
