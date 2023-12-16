@@ -203,8 +203,9 @@ static void gpio_task(void *arg)
         button_current = gpio_get_level(GPIO_NUM_26);
         if (button_current != button_last)
         {
-            previous_millis = millis();
+            previous_millis = millis();   // Non blocking mode
         }
+        
         if ((millis() - previous_millis) > interval) // Debouncing
         {
             if (!button_current)
