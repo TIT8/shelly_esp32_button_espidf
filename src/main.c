@@ -51,8 +51,9 @@ static const char *TAG = "mqtt";
 static const char *TAG2 = "wifi station";
 static int s_retry_num = 0;
 volatile bool state = 0;
-volatile bool connection = 0;
-volatile bool disconnected = 0;
+volatile bool connection = false;
+volatile bool disconnected = true;
+volatile bool fail = false;
 
 
 
@@ -93,6 +94,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
         disconnected = true;
+        if (fail) esp_restart();
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
@@ -165,6 +167,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
         else
         {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+            fail = true;
         }
         ESP_LOGI(TAG2, "connect to the AP fail");
     }
