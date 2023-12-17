@@ -30,6 +30,8 @@
 #include "cJSON.h"
 
 
+// Remember to panic and reboot (in the config) if the watchdog was triggered
+// https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/wdts.html#id1
 
 #define CONFIG_BROKER_URL "YOUR_MQTT_BROKER_IP_ADDRESS"
 #define GPIO_INPUT_PIN_SEL (1ULL << GPIO_NUM_26)
@@ -79,15 +81,9 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 
     switch ((esp_mqtt_event_id_t)event_id)
     {
-
-    case MQTT_EVENT_BEFORE_CONNECT:
-        ESP_LOGI(TAG, "MQTT_CLIENT_INITIALIZED");
-        while (!connection && !xQueueSend(mqtt_evt_queue, &client, 0)) {}
-        ESP_LOGI(TAG, "MQTT_CLIENT_READY_TO_PUBLISH");
-        break;
-
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
+        while (!connection && !xQueueSend(mqtt_evt_queue, &client, 0)) {}
         disconnected = false;
         msg_id = esp_mqtt_client_subscribe(client, "<YOUR_SHELLY_ID>/status/switch:0", 2);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
@@ -160,9 +156,6 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        // Remember to panic and reboot (in the config) if the watchdog was triggered
-        // This usally happen when the wifi connection is lost, so log and reboot
-        // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/wdts.html#id1
         if (s_retry_num < ESP_MAXIMUM_RETRY)
         {
             esp_wifi_connect();
@@ -220,16 +213,7 @@ static void gpio_task(void *arg)
                         if (disconnected)
                         {
                             // Force reconnection
-                            esp_err_t err = esp_mqtt_client_reconnect(client);
-                            if (err != ESP_OK)
-                            {
-                                ESP_LOGE(TAG, "MQTT reconnection failed with error: %d", err);
-                            }
-                            else
-                            {
-                                ESP_LOGI(TAG, "MQTT_RECONNECTION_SUCCESS");
-                                disconnected = false;
-                            }
+                            ESP_ERROR_CHECK(esp_mqtt_client_reconnect(client));
                         }
                     }
                     else if (msg_id != -1 && msg_id != -2)
@@ -246,6 +230,10 @@ static void gpio_task(void *arg)
             }
         }
         button_last = button_current;
+
+        // Yield control to the idle task on core 1 if the task priority is setted above 0
+        // https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32/api-guides/performance/speed.html#task-priorities
+        // vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
@@ -358,5 +346,9 @@ void app_main(void)
     io_conf.pull_down_en = 0;
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 
-    xTaskCreate(gpio_task, "gpio_task", 4096, NULL, 10, NULL);
+    // Due to the majority of built-in tasks pinned on core 0, the gpio task run on core 1
+    // Since there's only one application task, its priority on core 1 is setted to 0,
+    // so when RTOS tick, the idle task can run and feed the watchdog timer.
+    // https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32/api-guides/performance/speed.html#choosing-application-task-priorities
+    xTaskCreatePinnedToCore(gpio_task, "gpio_task", 4096, NULL, 0, NULL, 1);
 }
