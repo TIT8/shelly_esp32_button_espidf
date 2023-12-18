@@ -84,6 +84,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
         disconnected = false;
+        // Subscribe to the topic to receive the light status and update the state variable
         msg_id = esp_mqtt_client_subscribe(client, "<YOUR_SHELLY_ID>/status/switch:0", 2);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
         // Shelly can connect after ESP32, so better to retain the first publish, useful to update the state of the light
@@ -120,6 +121,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
             cJSON *output = cJSON_GetObjectItem(json, "output");
             if (output != NULL && cJSON_IsBool(output))
             {
+                // Update state with the light status received on the MQTT topic
                 state = output->valueint;
                 printf("output=%d\r\n", state);
             }
@@ -210,6 +212,7 @@ static void gpio_task(void *arg)
             {
                 if (!current)
                 {
+                    // https://shelly-api-docs.shelly.cloud/gen2/ComponentsAndServices/Switch#mqtt-control
                     msg_id = esp_mqtt_client_publish(client, "<YOUR_SHELLY_ID>/command/switch:0", state ? "off" : "on", 0, 2, 0);
                     // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/protocols/mqtt.html#_CPPv423esp_mqtt_client_publish24esp_mqtt_client_handle_tPKcPKciii
                     if (msg_id == -1)
@@ -234,6 +237,7 @@ static void gpio_task(void *arg)
                 current = 0;
             }
         }
+        
         button_last = button_current;
 
         // Yield control to the idle task on core 1 if the task priority is setted above 0
@@ -257,10 +261,7 @@ static void mqtt_app_start(void)
     mqtt_evt_queue = xQueueCreate(1, sizeof(client));
     if (mqtt_evt_queue != NULL)
     {
-        if (!xQueueSend(mqtt_evt_queue, &client, (TickType_t)10))
-        {
-            esp_restart();
-        }
+        if (!xQueueSend(mqtt_evt_queue, &client, (TickType_t)10)) esp_restart();
     }
     else 
     {
