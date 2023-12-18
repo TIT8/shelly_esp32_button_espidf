@@ -51,7 +51,6 @@ static const char *TAG = "mqtt";
 static const char *TAG2 = "wifi station";
 static int s_retry_num = 0;
 volatile bool state = 0;
-volatile bool connection = false;
 volatile bool disconnected = true;
 volatile bool fail = false;
 
@@ -84,11 +83,11 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
     {
     case MQTT_EVENT_CONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-        while (!connection && !xQueueSend(mqtt_evt_queue, &client, 0)) {}
         disconnected = false;
         msg_id = esp_mqtt_client_subscribe(client, "<YOUR_SHELLY_ID>/status/switch:0", 2);
         ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-        esp_mqtt_client_publish(client, "<YOUR_SHELLY_ID>/command/switch:0", "status_update", 0, 2, 0);
+        // Shelly can connect after ESP32, so better to retain the first publish, useful to update the state of the light
+        esp_mqtt_client_publish(client, "<YOUR_SHELLY_ID>/command/switch:0", "status_update", 0, 2, 1);
         break;
 
     case MQTT_EVENT_DISCONNECTED:
@@ -191,8 +190,11 @@ static void gpio_task(void *arg)
     int msg_id;
     esp_mqtt_client_handle_t client;
 
-    while (!xQueueReceive(mqtt_evt_queue, &client, portMAX_DELAY)) {}
-    connection = true;
+    // portMAX_DELAY is reduntant, because the sending happens before the receiving
+    // but it's better to block to be sure. Delete the queue after receiving,
+    // in this way no memory get wasted
+    xQueueReceive(mqtt_evt_queue, &client, portMAX_DELAY);
+    vQueueDelete(mqtt_evt_queue);
 
     for (;;)
     {
@@ -249,8 +251,21 @@ static void mqtt_app_start(void)
     esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
 
     esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
-    mqtt_evt_queue = xQueueCreate(1, sizeof(client));
     esp_mqtt_client_start(client);
+
+    // Send data to gpio task and handle failure from here, so gpio task should not worry
+    mqtt_evt_queue = xQueueCreate(1, sizeof(client));
+    if (mqtt_evt_queue != NULL)
+    {
+        if (!xQueueSend(mqtt_evt_queue, &client, (TickType_t)10))
+        {
+            esp_restart();
+        }
+    }
+    else 
+    {
+        esp_restart();
+    }
 }
 
 
@@ -350,8 +365,8 @@ void app_main(void)
     ESP_ERROR_CHECK(gpio_config(&io_conf));
 
     // Due to the majority of built-in tasks pinned on core 0, the gpio task run on core 1
-    // Since there's only one application task, its priority on core 1 is setted to 0,
-    // so when RTOS tick, the idle task can run and feed the watchdog timer.
+    // Since there's only one application task, its priority on core 1 is setted to 0.
+    // So when RTOS tick, the idle task can run and feed the watchdog timer.
     // https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32/api-guides/performance/speed.html#choosing-application-task-priorities
     xTaskCreatePinnedToCore(gpio_task, "gpio_task", 4096, NULL, 0, NULL, 1);
 }
