@@ -32,7 +32,7 @@
 // Remember to panic and reboot (in the config) if the watchdog was triggered
 // https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/wdts.html#id1
 
-#define CONFIG_BROKER_URL "YOUR_MQTT_BROKER_IP_ADDRESS"
+#define CONFIG_BROKER_URL "mqtt://<BROKER_URL>:<PORT>"
 #define GPIO_INPUT_PIN_SEL (1ULL << GPIO_NUM_26)
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
