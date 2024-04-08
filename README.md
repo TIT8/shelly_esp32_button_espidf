@@ -55,7 +55,7 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 
 ## Why don't you use Bluetooth?
 
-Yea, it will be far less power consuming (two devices that talk via BLE, instead of two + router via WiFi). But Shelly cannot receive command via Bluetooth, it sends only informations.
+Yea, it will be far less power consuming (two devices that talk via BLE, instead of two + broker + router via WiFi). But Shelly cannot receive command via Bluetooth, it sends only informations.
 
 ## Adventure with speech recognition
 
