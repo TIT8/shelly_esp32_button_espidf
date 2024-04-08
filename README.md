@@ -53,6 +53,10 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 
 ![Screenshot (31)](https://github.com/TIT8/shelly_button_esp32/assets/68781644/e6de6e83-4aeb-428b-a845-5be89e2eb7bd)
 
+## Why don't you use Bluetooth?
+
+Yea, it will be far less power consuming (two devices that talk via BLE, instead of two + router via WiFi). But Shelly cannot receive command via Bluetooth, it sends only informations.
+
 ## Adventure with speech recognition
 
 You can make it with _I2S MIC + ESP-EYE_ on Edge Impulse for example. I tried with different boards, take a look [here](https://github.com/TIT8/shelly_button_esp32_arduino/tree/master/speech_recognition).
