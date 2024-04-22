@@ -59,6 +59,6 @@ Yea, it will be far less power consuming (two devices that talk via BLE, instead
 
 ## Adventure with speech recognition
 
-You can make it with _I2S MIC + ESP-EYE_ on Edge Impulse for example. I tried with different boards, take a look [here](https://github.com/TIT8/shelly_button_esp32_arduino/tree/master/speech_recognition).
+You can make it with _I2S MIC + ESP-EYE_ on Edge Impulse for example. I tried with different boards, take a look [here](https://github.com/TIT8/shelly_button_esp32_arduino/tree/master/speech_recognition) for offline recognition and [here](https://github.com/TIT8/BLE-sensor_PDM-microphone) for online.
 
 <br>
