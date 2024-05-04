@@ -53,6 +53,17 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 
 ![Screenshot (31)](https://github.com/TIT8/shelly_button_esp32/assets/68781644/e6de6e83-4aeb-428b-a845-5be89e2eb7bd)
 
+## Why busy wait the button status and not polling it or be notified by interrupts?
+
+Because the ESP32 has two cores, Core 1 is [designated](https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32/api-guides/performance/speed.html#task-priorities) for very low priority tasks, which are rescheduled by FreeRTOS (alternating with the idle task responsible for resetting the watchdog). In this specific case, I prefer using busy waiting for a quick response to input, although I acknowledge it sacrifices efficiency. An interrupt-notified task (unblocked via queue or semaphore) would enhance efficiency. A task blocked on I/O might not be rescheduled, leaving only the idle task on Core 1, which can put the core in low power mode.   
+However, the circuit from the button to the ESP32 input pin must include some form of debouncing (hardware-based, with RC filters), or else the task will continuously block and unblock when pressing and releasing the button, resulting in multiple MQTT command transmissions (undesirable for my application). Alternatively, a timer can be employed to prompt the task to check the input value when it fires, reducing CPU workload (although the task is rescheduled less frequently than with busy waiting, it still wastes CPU when rescheduled).
+
+In a multitasking RTOS environment like ESP-IDF-FreeRTOS, busy waiting allows for software-based debouncing, simplifying hardware requirements. Laziness is the primary motivation; I seek a quick solution with minimal components, as I'm utilizing the ESP32 development board with a small push button on a compact breadboard, making it challenging to add resistors and capacitors in the limited space available.
+
+Ideally, I would prefer a hardware debouncing solution coupled with interrupts. Perhaps in the future, with a custom PCB, I can implement this. However, for now, I'm constrained to using [software debouncing with busy waiting](https://github.com/TIT8/shelly_esp32_button_espidf/blob/e734a4e6457348e04da7f35a4adea39093754591/src/main.c#L182) on the low-priority task of Core 1 of the ESP32 (as Core 0 handles MQTT, Wi-Fi, and event loop tasks and is already busy). Depending on the MCU, RTOS, or hardware setup, I might opt for a different approach entirely.
+
+For further insights, refer to this discussions: [difference between polling and busy waiting](https://stackoverflow.com/questions/10594426/what-is-the-difference-between-busy-wait-and-polling) and [difference between polling and interrupt for IO](https://stackoverflow.com/questions/10388757/polling-vs-interrupt).
+
 ## Why don't you use Bluetooth?
 
 Yea, it will be far less power consuming (two devices that talk via BLE, instead of two + broker + router via WiFi). But Shelly cannot receive command via Bluetooth, it sends only informations.
