@@ -179,7 +179,7 @@ static void gpio_task(void *arg)
 
     for (;;)
     {
-        button_current = gpio_get_level(GPIO_NUM_26);
+        button_current = gpio_get_level(GPIO_NUM_26);    // Please read the README to know why I'm waiting for this
         if (button_current != button_last)
         {
             previous_millis = millis();   // Non blocking mode
