@@ -175,7 +175,7 @@ static void gpio_task(void *arg)
 {
     bool current = 0;
     bool button_current = 0;
-    bool button_last = 0;
+    bool button_last = 1;
     int notification = 0;
     bool triggered = false;
     bool first = false;
@@ -184,6 +184,7 @@ static void gpio_task(void *arg)
     unsigned long previous_millis = 0UL;
     unsigned long interval = 70UL;
     int msg_id;
+    uint32_t count = 0;
     esp_mqtt_client_handle_t client;
 
     // portMAX_DELAY is reduntant, because the sending happens before the receiving
@@ -215,7 +216,6 @@ static void gpio_task(void *arg)
             gpio_intr_disable(GPIO_NUM_26);
             triggered = true;
             button_current = 0;
-            first = false;
         }
         // Check level for software debouncing
         else
@@ -262,7 +262,7 @@ static void gpio_task(void *arg)
         button_last = button_current;
 
         // If button pressed and then released, re-enable gpio interrupt
-        if(pressed && released)
+        if((pressed && released) || count > 120)
         {
             triggered = false;
             pressed = false;
@@ -270,13 +270,21 @@ static void gpio_task(void *arg)
             button_last = false;
             current = 0;
             notification = 0;
+            previous_millis = 0UL;
+            button_last = 1;
+            count = 0;
             vTaskDelay(100 / portTICK_PERIOD_MS);
             gpio_intr_enable(GPIO_NUM_26);
         }
 
         // Yield control to the idle task on core 1 if the task priority is setted above 0
         // https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32/api-guides/performance/speed.html#task-priorities
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+        first ? first = false : vTaskDelay(10 / portTICK_PERIOD_MS);
+        
+        // If the button is pressed too fast (really very worst case scenario)
+        // start a count that will reset the waiting on notification from ISR
+        // This can also help with spurious-non-wanted button change, increasing stability.
+        count++;
     }
 }
 
