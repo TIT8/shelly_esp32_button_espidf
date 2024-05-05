@@ -213,7 +213,7 @@ static void gpio_task(void *arg)
         // First time in this task from waiting? Disable interrupt
         if(first)
         {
-            gpio_intr_disable(GPIO_NUM_26);
+            ESP_ERROR_CHECK(gpio_intr_disable(GPIO_NUM_26));
             triggered = true;
             button_current = 0;
         }
@@ -274,7 +274,7 @@ static void gpio_task(void *arg)
             button_last = 1;
             count = 0;
             vTaskDelay(100 / portTICK_PERIOD_MS);
-            gpio_intr_enable(GPIO_NUM_26);
+            ESP_ERROR_CHECK(gpio_intr_enable(GPIO_NUM_26));
         }
 
         // Yield control to the idle task on core 1 if the task priority is setted above 0
