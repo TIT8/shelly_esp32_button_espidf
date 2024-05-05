@@ -45,6 +45,7 @@
 
 static QueueHandle_t mqtt_evt_queue = NULL;
 static EventGroupHandle_t s_wifi_event_group;
+static TaskHandle_t xTaskToNotify = NULL;
 
 static const char *TAG = "mqtt";
 static const char *TAG2 = "wifi station";
@@ -161,11 +162,25 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
 }
 
 
+static void IRAM_ATTR gpio_isr_handler(void *arg)
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    configASSERT( xTaskToNotify != NULL );
+    vTaskNotifyGiveFromISR(xTaskToNotify, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+
 static void gpio_task(void *arg)
 {
     bool current = 0;
     bool button_current = 0;
     bool button_last = 0;
+    int notification = 0;
+    bool triggered = false;
+    bool first = false;
+    bool pressed = false;
+    bool released = false;
     unsigned long previous_millis = 0UL;
     unsigned long interval = 70UL;
     int msg_id;
@@ -176,15 +191,44 @@ static void gpio_task(void *arg)
     // in this way no memory get wasted
     xQueueReceive(mqtt_evt_queue, &client, portMAX_DELAY);
     vQueueDelete(mqtt_evt_queue);
+    xTaskToNotify = xTaskGetCurrentTaskHandle();
 
     for (;;)
     {
-        button_current = gpio_get_level(GPIO_NUM_26);    // Please read the README to know why I'm waiting for this
+        // At the beginning, block the task until control is given from ISR
+        if(!triggered) 
+        {
+            notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+            first = true;
+        }
+        
+        // If timeout, skip and re-block
+        if(notification == 0) 
+        {
+            first = false;
+            continue;
+        }
+
+        // First time in this task from waiting? Disable interrupt
+        if(first)
+        {
+            gpio_intr_disable(GPIO_NUM_26);
+            triggered = true;
+            button_current = 0;
+            first = false;
+        }
+        // Check level for software debouncing
+        else
+        {
+            button_current = gpio_get_level(GPIO_NUM_26); 
+        } 
+
+        // Debouncing state machine
         if (button_current != button_last)
         {
             previous_millis = millis();   // Non blocking mode
         }
-        
+
         if ((millis() - previous_millis) > interval) // Debouncing
         {
             if (!button_current)
@@ -204,20 +248,35 @@ static void gpio_task(void *arg)
                             ESP_ERROR_CHECK(esp_mqtt_client_reconnect(client));
                         }
                     }
+                    pressed = true;
                 }
                 current = 1;
             }
             else
             {
+                if(pressed) released = true;
                 current = 0;
             }
         }
 
         button_last = button_current;
 
+        // If button pressed and then released, re-enable gpio interrupt
+        if(pressed && released)
+        {
+            triggered = false;
+            pressed = false;
+            released = false;
+            button_last = false;
+            current = 0;
+            notification = 0;
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+            gpio_intr_enable(GPIO_NUM_26);
+        }
+
         // Yield control to the idle task on core 1 if the task priority is setted above 0
         // https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32/api-guides/performance/speed.html#task-priorities
-        // vTaskDelay(10 / portTICK_PERIOD_MS);
+        vTaskDelay(10 / portTICK_PERIOD_MS);
     }
 }
 
@@ -333,16 +392,16 @@ void app_main(void)
     mqtt_app_start();
 
     gpio_config_t io_conf = {};
-    io_conf.intr_type = GPIO_INTR_DISABLE;
+    io_conf.intr_type = GPIO_INTR_NEGEDGE;
     io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
     io_conf.mode = GPIO_MODE_INPUT;
     io_conf.pull_up_en = 1;
     io_conf.pull_down_en = 0;
     ESP_ERROR_CHECK(gpio_config(&io_conf));
+    ESP_ERROR_CHECK(gpio_install_isr_service(0));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(GPIO_NUM_26, gpio_isr_handler, NULL));
 
     // Due to the majority of built-in tasks pinned on core 0, the gpio task run on core 1
-    // Since there's only one application task, its priority on core 1 is setted to 0.
-    // So when RTOS tick, the idle task can run and feed the watchdog timer.
     // https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32/api-guides/performance/speed.html#choosing-application-task-priorities
-    xTaskCreatePinnedToCore(gpio_task, "gpio_task", 4096, NULL, 0, NULL, 1);
+    xTaskCreatePinnedToCore(gpio_task, "gpio_task", 4096, NULL, 5, NULL, 1);
 }
