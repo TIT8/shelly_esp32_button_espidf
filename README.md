@@ -26,12 +26,6 @@ A push button is connected to the [ESP32](https://github.com/espressif/arduino-e
 4. Remember to add the [CP2102 driver](https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers?tab=downloads) to connect old ESP32 development board (with CP2102 as USB-UART bridge).
 5. [How to](https://github.com/sukesh-ak/setup-mosquitto-with-docker) setup a local broker in a Docker container.
 
-## Difference with branch V2?
-
-On the master branch, I'm using [task notifications](https://www.freertos.org/RTOS_Task_Notification_As_Binary_Semaphore.html) from FreeRTOS to unblock a high-priority (relative to [core 1](https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32s3/api-guides/performance/speed.html#choosing-application-task-priorities)) task responsible for debouncing in the software, despite the use of interrupts (which are disabled and enabled within that task). Therefore, when the button is not in use, the task remains blocked on a type of semaphore, conserving CPU resources. This allows the idle task to run uninterrupted until the button is pressed, ensuring the watchdog timer is consistently reset.
-
-The main thread is more efficient the one in the V2 branch (which employs [busy wait](https://github.com/TIT8/shelly_esp32_button_espidf/tree/v2?tab=readme-ov-file#why-busy-wait-the-button-status-and-not-polling-it-or-be-notified-by-interrupts) for monitoring button status instead of polling or being notified by interrupts). In the main task, the interrupts are enabled and disabled only on the GPIO pin used and on the core where the task is pinned like a critical section, according to the [official doc](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/freertos_idf.html#disabling-interrupts).
-
 ## ESP-IDF vs Arduino
 
 | Features | ESP-IDF | Arduino |
@@ -50,6 +44,14 @@ The main thread is more efficient the one in the V2 branch (which employs [busy 
 [^1]: Still relevant in performance and reliability for general use cases.
 [^2]: I know that can be less than Arduino, but I'm still a beginner with the official IDF. Forgive me.
 [^3]: **This [Youtube channel](https://www.youtube.com/watch?v=EegFVATVvJU) can be your starting point in RTOS (you'll never come back then).**
+
+## Difference with branch V2?
+
+On the master branch, I'm using [task notifications](https://www.freertos.org/RTOS_Task_Notification_As_Binary_Semaphore.html) from FreeRTOS to unblock a high-priority (relative to [core 1](https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32s3/api-guides/performance/speed.html#choosing-application-task-priorities)) task responsible for debouncing in the software, despite the use of interrupts (which are disabled and enabled within that task). Therefore, when the button is not in use, the task remains blocked on a type of semaphore, conserving CPU resources. This allows the idle task to run uninterrupted until the button is pressed, ensuring the watchdog timer is consistently reset.
+
+The main thread is more efficient the one in the V2 branch (which employs [busy wait](https://github.com/TIT8/shelly_esp32_button_espidf/tree/v2?tab=readme-ov-file#why-busy-wait-the-button-status-and-not-polling-it-or-be-notified-by-interrupts) for monitoring button status instead of polling or being notified by interrupts). In the main task, the interrupts are enabled and disabled only on the GPIO pin used and on the core where the task is pinned like a critical section, according to the [official doc](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/freertos_idf.html#disabling-interrupts). [^4]
+
+[^4]: Also a useful [topic](https://esp32.com/viewtopic.php?t=35019).
 
 ## Shelly options
 
