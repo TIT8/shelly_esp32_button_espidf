@@ -171,8 +171,25 @@ static void IRAM_ATTR gpio_isr_handler(void *arg)
 }
 
 
+void gpio_init()
+{
+    gpio_config_t io_conf = {};
+    io_conf.intr_type = GPIO_INTR_NEGEDGE;
+    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = 1;
+    io_conf.pull_down_en = 0;
+    ESP_ERROR_CHECK(gpio_config(&io_conf));
+    ESP_ERROR_CHECK(gpio_install_isr_service(ESP_INTR_FLAG_EDGE));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(GPIO_NUM_26, gpio_isr_handler, NULL));
+}
+
+
 static void gpio_task(void *arg)
 {
+    // Pin the interrupt to the core where the task run <https://esp32.com/viewtopic.php?t=5553>
+    gpio_init();
+
     bool current = 0;
     bool button_current = 0;
     bool button_last = 1;
@@ -261,6 +278,17 @@ static void gpio_task(void *arg)
 
         button_last = button_current;
 
+        // If the button is pressed too fast (really very worst case scenario)
+        // start a count that will reset the waiting on notification from ISR
+        // This can also help with spurious-non-wanted button change, increasing stability and protecting the light.
+        // But also with long pressing, block the task if count is too big
+        count++;
+
+        // Yield control to the idle task on core 1 if the task priority is setted above 0
+        // https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32/api-guides/performance/speed.html#task-priorities
+        first ? first = false : vTaskDelay(10 / portTICK_PERIOD_MS);
+        
+
         // If button pressed and then released, re-enable gpio interrupt
         if((pressed && released) || count > 120)
         {
@@ -276,15 +304,6 @@ static void gpio_task(void *arg)
             vTaskDelay(100 / portTICK_PERIOD_MS);
             ESP_ERROR_CHECK(gpio_intr_enable(GPIO_NUM_26));
         }
-
-        // Yield control to the idle task on core 1 if the task priority is setted above 0
-        // https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32/api-guides/performance/speed.html#task-priorities
-        first ? first = false : vTaskDelay(10 / portTICK_PERIOD_MS);
-        
-        // If the button is pressed too fast (really very worst case scenario)
-        // start a count that will reset the waiting on notification from ISR
-        // This can also help with spurious-non-wanted button change, increasing stability.
-        count++;
     }
 }
 
@@ -398,16 +417,6 @@ void app_main(void)
     wifi_init_sta();
 
     mqtt_app_start();
-
-    gpio_config_t io_conf = {};
-    io_conf.intr_type = GPIO_INTR_NEGEDGE;
-    io_conf.pin_bit_mask = GPIO_INPUT_PIN_SEL;
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_up_en = 1;
-    io_conf.pull_down_en = 0;
-    ESP_ERROR_CHECK(gpio_config(&io_conf));
-    ESP_ERROR_CHECK(gpio_install_isr_service(0));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(GPIO_NUM_26, gpio_isr_handler, NULL));
 
     // Due to the majority of built-in tasks pinned on core 0, the gpio task run on core 1
     // https://docs.espressif.com/projects/esp-idf/en/v5.0/esp32/api-guides/performance/speed.html#choosing-application-task-priorities
